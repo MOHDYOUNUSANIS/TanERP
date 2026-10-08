@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ACCOUNTANT
+  WORKER
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(WORKER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Phase 1 - Accounting & Core
+model Account {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  type        AccountType
+  entries     LedgerEntry[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+model Supplier {
+  id        Int      @id @default(autoincrement())
+  name      String
+  contact   String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String
+  contact   String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Chemical {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  stockQty    Float    @default(0)
+  unit        String   @default("kg")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  issues      ChemicalIssue[]
+}
+
+model Voucher {
+  id          Int      @id @default(autoincrement())
+  voucherNo   String   @unique
+  type        VoucherType
+  date        DateTime @default(now())
+  amount      Float
+  description String?
+  entries     LedgerEntry[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum VoucherType {
+  PURCHASE
+  PAYMENT
+  RECEIPT
+  JOURNAL
+}
+
+model LedgerEntry {
+  id        Int      @id @default(autoincrement())
+  voucherId Int
+  voucher   Voucher  @relation(fields: [voucherId], references: [id])
+  accountId Int
+  account   Account  @relation(fields: [accountId], references: [id])
+  debit     Float    @default(0)
+  credit    Float    @default(0)
+  createdAt DateTime @default(now())
+}
+
+// Phase 2 - Production & Inventory
+model Drum {
+  id          Int      @id @default(autoincrement())
+  drumNo      String   @unique
+  capacity    Float
+  status      DrumStatus @default(EMPTY)
+  allocations DrumAllocation[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum DrumStatus {
+  EMPTY
+  IN_USE
+  CLEANING
+}
+
+model Lot {
+  id          Int      @id @default(autoincrement())
+  lotNo       String   @unique
+  status      LotStatus @default(PLANNED)
+  issues      ChemicalIssue[]
+  allocations DrumAllocation[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum LotStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model DrumAllocation {
+  id        Int      @id @default(autoincrement())
+  drumId    Int
+  drum      Drum     @relation(fields: [drumId], references: [id])
+  lotId     Int
+  lot       Lot      @relation(fields: [lotId], references: [id])
+  allocatedAt DateTime @default(now())
+  releasedAt  DateTime?
+}
+
+model ChemicalIssue {
+  id          Int      @id @default(autoincrement())
+  chemicalId  Int
+  chemical    Chemical @relation(fields: [chemicalId], references: [id])
+  lotId       Int
+  lot         Lot      @relation(fields: [lotId], references: [id])
+  qtyIssued   Float
+  issuedAt    DateTime @default(now())
+}
